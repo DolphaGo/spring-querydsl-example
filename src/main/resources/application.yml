@@ -11,6 +11,8 @@ spring:
       hibernate:
   #      show_sql: true
         format_sql: true
+        use_sql_comments: true #querydsl로 만든 jpql을 보고 싶다면 이 속성을 추가한다. /* */ 주석 사이에 JPQL이 표현된다.
+
 logging.level:
   org.hibernate.SQL: debug
 #  org.hibernate.type: trace
