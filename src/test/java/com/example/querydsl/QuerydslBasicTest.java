@@ -1,6 +1,7 @@
 package com.example.querydsl;
 
 import static com.example.querydsl.entity.QMember.member;
+import static com.example.querydsl.entity.QTeam.team;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -18,8 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.querydsl.entity.Member;
 import com.example.querydsl.entity.QMember;
+import com.example.querydsl.entity.QTeam;
 import com.example.querydsl.entity.Team;
 import com.querydsl.core.QueryResults;
+import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 @SpringBootTest
@@ -209,5 +212,64 @@ public class QuerydslBasicTest {
         assertEquals(2, queryResults.getLimit());
         assertEquals(1, queryResults.getOffset());
         assertEquals(2, queryResults.getResults().size()); // content
+    }
+
+    @DisplayName("집합")
+    @Test
+    void aggregation() {
+        List<Tuple> result = queryFactory
+                .select(
+                        member.count(),
+                        member.age.sum(),
+                        member.age.avg(),
+                        member.age.max(),
+                        member.age.min()
+                ).from(member)
+                .fetch(); // querydsl이 제공하는 tuple형을 반환한다.
+
+        // 데이터 타입이 각각 다름 - 튜플 사용. 실무에서는 DTO로 뽑아서 쓰면 된다.
+        Tuple tuple = result.get(0);
+        assertEquals(4, tuple.get(member.count())); // 튜플 사용법 : select에 적은 표현식 그대로
+        assertEquals(100, tuple.get(member.age.sum()));
+        assertEquals(25, tuple.get(member.age.avg()));
+        assertEquals(40, tuple.get(member.age.max()));
+        assertEquals(10, tuple.get(member.age.min()));
+    }
+
+    @DisplayName("팀의 이름과 각 팀의 평균 연령을 구해라")
+    @Test
+    void groupby() {
+        List<Tuple> result = queryFactory
+                .select(team.name, member.age.avg())
+                .from(member)
+                .join(member.team, team)
+                .groupBy(team.name)
+                .fetch();
+
+        Tuple teamA = result.get(0);
+        Tuple teamB = result.get(1);
+
+        assertEquals("teamA", teamA.get(team.name));
+        assertEquals(15, teamA.get(member.age.avg()));
+
+        assertEquals("teamB", teamB.get(team.name));
+        assertEquals(35, teamB.get(member.age.avg()));
+    }
+
+    @DisplayName("각 팀의 평균 연령이 20살이 넘는 팀을 구해라")
+    @Test
+    void having() {
+        List<Tuple> result = queryFactory
+                .select(team.name, member.age.avg())
+                .from(member)
+                .join(member.team, team)
+                .groupBy(team.name)
+                .having(member.age.avg().gt(20))
+                .fetch();
+
+        Tuple resultTeam = result.get(0);
+
+        assertEquals("teamB", resultTeam.get(team.name));
+        assertEquals(35, resultTeam.get(member.age.avg()));
     }
 }
