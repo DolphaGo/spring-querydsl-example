@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 //@Commit = Rollback(false)
 class MemberTest {
     @PersistenceContext
-    EntityManager em;
+    private EntityManager em;
 
     @Test
     void test() {
