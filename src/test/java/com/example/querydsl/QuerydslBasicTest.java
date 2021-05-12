@@ -8,6 +8,7 @@ import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -132,19 +133,51 @@ public class QuerydslBasicTest {
 //                .where(member.age.gt(100))
 //                .fetchFirst();
 //
-//        QueryResults<Member> results = queryFactory
-//                .selectFrom(member)
-//                .offset(1)
-//                .limit(3)
-//                .fetchResults();
-//        long total = results.getTotal();
-//        long offset = results.getOffset();
-//        long limit = results.getLimit();
-//        List<Member> content = results.getResults();
-//        content.forEach(System.out::println);
+        QueryResults<Member> results = queryFactory
+                .selectFrom(member)
+                .offset(1)
+                .limit(3)
+                .fetchResults();
+        long total = results.getTotal();
+        long offset = results.getOffset();
+        long limit = results.getLimit();
+        List<Member> content = results.getResults();
+        content.forEach(System.out::println);
 
-long count = queryFactory
-        .selectFrom(member)
-        .fetchCount();
+//        long count = queryFactory
+//                .selectFrom(member)
+//                .fetchCount();
+    }
+
+    /**
+     * 회원 정렬 순서
+     * 1. 회원 나이 내림차순(desc)
+     * 2. 회원 이름 올림차순(asc)
+     * 단, 2에서 회원 이름이 없으면 마지막에 null을 출력(nulls last)
+     */
+    @DisplayName("정렬")
+    @Test
+    void sort() {
+        em.persist(new Member(null, 99));
+        em.persist(new Member(null, 100));
+        em.persist(new Member("member5", 99));
+        em.persist(new Member("member5", 100));
+        em.persist(new Member("member6", 100));
+
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .where(member.age.between(99, 100))
+                .orderBy(member.username.asc().nullsLast(), member.age.desc())
+                .fetch();
+
+        System.out.println(result.toString());
+//
+//        Member member5 = result.get(0);
+//        Member member6 = result.get(1);
+//        Member memberNull = result.get(2);
+//
+//        assertEquals("member5", member5.getUsername());
+//        assertEquals("member6", member6.getUsername());
+//        Assertions.assertNull(memberNull.getUsername());
     }
 }
