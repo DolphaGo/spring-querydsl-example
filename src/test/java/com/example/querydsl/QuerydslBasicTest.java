@@ -56,6 +56,11 @@ public class QuerydslBasicTest {
         assertEquals("member1", findMember.getUsername());
     }
 
+    /**
+     * JPQL에 문법 에러가 있으면 런타임에 오류가 발생함
+     * Querydsl은 컴파일에 문법 에러가 잡힘
+     */
+
     @DisplayName("Querydsl일 때")
     @Test
     void startQuerydsl() {
@@ -78,9 +83,31 @@ public class QuerydslBasicTest {
         assertEquals("member1", findMember.getUsername());
     }
 
-    /**
-     * JPQL에 문법 에러가 있으면 런타임에 오류가 발생함
-     * Querydsl은 컴파일에 문법 에러가 잡힘
-     */
+    @DisplayName("검색 쿼리")
+    @Test
+    void search() {
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .where(member.username.eq("member1")
+                                      .and(member.age.eq(10))) // chaining으로 and/or 등으로 검색 조건을 쭉쭉 이어나갈 수 있다.
+                .fetchOne();
 
+        assertEquals("member1", findMember.getUsername());
+        assertEquals(10, findMember.getAge());
+    }
+
+    @Test
+    void searchAndParam() {
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .where(
+                        member.username.eq("member1"),
+    //                        member.age.eq(10),// ,로 파라미터식으로 여러개로 넘겨도 and로 인식한다.
+                        null, // 조건 중 null이 있으면 무시함(동적쿼리에서 아주아주 강력한 기능을 자랑한다.)
+                        member.age.in(10, 20, 30, 40))
+                .fetchOne();
+
+        assertEquals("member1", findMember.getUsername());
+        assertEquals(10, findMember.getAge());
+    }
 }
