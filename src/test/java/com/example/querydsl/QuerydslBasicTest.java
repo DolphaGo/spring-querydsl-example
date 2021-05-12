@@ -3,6 +3,8 @@ package com.example.querydsl;
 import static com.example.querydsl.entity.QMember.member;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.List;
+
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.querydsl.entity.Member;
 import com.example.querydsl.entity.QMember;
 import com.example.querydsl.entity.Team;
+import com.querydsl.core.QueryResults;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 @SpringBootTest
@@ -102,12 +105,46 @@ public class QuerydslBasicTest {
                 .selectFrom(member)
                 .where(
                         member.username.eq("member1"),
-    //                        member.age.eq(10),// ,로 파라미터식으로 여러개로 넘겨도 and로 인식한다.
+                        //                        member.age.eq(10),// ,로 파라미터식으로 여러개로 넘겨도 and로 인식한다.
                         null, // 조건 중 null이 있으면 무시함(동적쿼리에서 아주아주 강력한 기능을 자랑한다.)
                         member.age.in(10, 20, 30, 40))
                 .fetchOne();
 
         assertEquals("member1", findMember.getUsername());
         assertEquals(10, findMember.getAge());
+    }
+
+    @DisplayName("resultFetch")
+    @Test
+    void resultFetch() {
+//        List<Member> fetch = queryFactory
+//                .selectFrom(member)
+//                .fetch();
+//
+////        // 단건 조회
+//        Member fetchOne = queryFactory
+//                .selectFrom(member)
+//                .where(member.age.lt(15))
+//                .fetchOne();
+////
+//        Member fetchFirst = queryFactory
+//                .selectFrom(member)
+//                .where(member.age.gt(100))
+//                .fetchFirst();
+//
+//        QueryResults<Member> results = queryFactory
+//                .selectFrom(member)
+//                .offset(1)
+//                .limit(3)
+//                .fetchResults();
+//        long total = results.getTotal();
+//        long offset = results.getOffset();
+//        long limit = results.getLimit();
+//        List<Member> content = results.getResults();
+//        content.forEach(System.out::println);
+
+long count = queryFactory
+        .selectFrom(member)
+        .fetchCount();
     }
 }
