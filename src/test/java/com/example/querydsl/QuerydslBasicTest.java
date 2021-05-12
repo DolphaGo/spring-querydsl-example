@@ -2,6 +2,7 @@ package com.example.querydsl;
 
 import static com.example.querydsl.entity.QMember.member;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 
@@ -179,5 +180,34 @@ public class QuerydslBasicTest {
 //        assertEquals("member5", member5.getUsername());
 //        assertEquals("member6", member6.getUsername());
 //        Assertions.assertNull(memberNull.getUsername());
+    }
+
+    @DisplayName("페이징")
+    @Test
+    void paging1() {
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .orderBy(member.username.desc())
+                .offset(0) // 0부터 시작임
+                .limit(2)
+                .fetch();
+
+        assertEquals(2, result.size());
+    }
+
+    @DisplayName("전체 조회수가 필요할 때")
+    @Test
+    void paging2() {
+        QueryResults<Member> queryResults = queryFactory
+                .selectFrom(member)
+                .orderBy(member.username.desc())
+                .offset(1) // 0부터 시작임
+                .limit(2)
+                .fetchResults();
+
+        assertEquals(4, queryResults.getTotal()); // 쿼리가 복잡해지면 count query를 분리해라.
+        assertEquals(2, queryResults.getLimit());
+        assertEquals(1, queryResults.getOffset());
+        assertEquals(2, queryResults.getResults().size()); // content
     }
 }
