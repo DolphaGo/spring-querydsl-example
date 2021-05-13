@@ -227,7 +227,7 @@ public class QuerydslBasicTest {
                 ).from(member)
                 .fetch(); // querydsl이 제공하는 tuple형을 반환한다.
 
-        // 데이터 타입이 각각 다름 - 튜플 사용. 실무에서는 DTO로 뽑아서 쓰면 된다.
+        // 데이터 타입이 각각 다름 -> 튜플 사용. 실무에서는 DTO로 뽑아서 사용.
         Tuple tuple = result.get(0);
         assertEquals(4, tuple.get(member.count())); // 튜플 사용법 : select에 적은 표현식 그대로
         assertEquals(100, tuple.get(member.age.sum()));
