@@ -29,6 +29,7 @@ import com.example.querydsl.entity.Team;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -616,5 +617,33 @@ public class QuerydslBasicTest {
         }
         // 근데 가급적이면 DB에서 이런 처리를 하지 않음
         // 최소한의 필터링은 DB에서 하지만, 위와 같이 값을 전환하는 경우는 애플리케이션단에서 처리하는 것을 권장한다.
+    }
+
+    @DisplayName("상수 추가")
+    @Test
+    void constant() {
+        List<Tuple> result = queryFactory
+                .select(member.username, Expressions.constant("A")) // JPQL로는 상수 쿼리가 안나감, 결과로만 나감
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    @DisplayName("문자 더하기")
+    @Test
+    void concat() {
+        // {username}_{age} 이렇게 만들려고 한다.
+        List<String> result = queryFactory
+                .select(member.username.concat("_").concat(member.age.stringValue())) // .stringValue()가 생각보다 쓸일이 많습니다. enum같은 경우에 쓸일이 많아요.
+                .from(member)
+//                .where(member.username.eq("member1"))
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
     }
 }
