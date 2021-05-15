@@ -28,6 +28,7 @@ import com.example.querydsl.entity.QTeam;
 import com.example.querydsl.entity.Team;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 @SpringBootTest
@@ -442,7 +443,7 @@ public class QuerydslBasicTest {
                 .fetchOne(); // Team은 조회하지 않음
 
         boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam()); // emf에서 team이 영속성 컨텍스트에 로딩되었는지 판단할 수 있음
-        assertFalse(loaded,"페치 조인 미적용");
+        assertFalse(loaded, "페치 조인 미적용");
     }
 
     @DisplayName("페치 조인이 있을 때")
@@ -465,7 +466,119 @@ public class QuerydslBasicTest {
                 .fetchOne(); // Team은 조회하지 않음
 
         boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam()); // emf에서 team이 영속성 컨텍스트에 로딩되었는지 판단할 수 있음
-        assertTrue(loaded,"페치 조인 적용");
+        assertTrue(loaded, "페치 조인 적용");
     }
 
+    /**
+     * 서브 쿼리
+     * com.querydsl.jpa.JPAExpressions 사용
+     */
+
+    @DisplayName("나이가 가장 많은 회원 조회")
+    @Test
+    void subQuery_eq() {
+        /**
+         * 서브 쿼리이기 때문에 바깥의 member와 겹치면 안됨
+         * 그래서 QMember를 직접 생성하여 alias를 다르게 합니다.
+         */
+        QMember memberSub = new QMember("memberSub");
+
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .where(member.age.eq(
+                        JPAExpressions
+                                .select(memberSub.age.max())
+                                .from(memberSub)
+                )).fetch();
+
+        assertThat(result).extracting("age")
+                          .containsExactly(40);
+    }
+
+    /**
+     * 서브 쿼리
+     * com.querydsl.jpa.JPAExpressions 사용
+     */
+
+    @DisplayName("나이가 가장 평균 이상인 회원 조회")
+    @Test
+    void subQuery_goe() {
+        /**
+         * 서브 쿼리이기 때문에 바깥의 member와 겹치면 안됨
+         * 그래서 QMember를 직접 생성하여 alias를 다르게 합니다.
+         */
+        QMember memberSub = new QMember("memberSub");
+
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .where(member.age.goe(
+                        JPAExpressions
+                                .select(memberSub.age.avg())
+                                .from(memberSub)
+                )).fetch();
+
+        assertThat(result).extracting("age")
+                          .containsExactly(30, 40);
+    }
+
+    @DisplayName("나이가 10살 보다 많은 회원 조회")
+    @Test
+    void subQuery_in() {
+        /**
+         * 서브 쿼리이기 때문에 바깥의 member와 겹치면 안됨
+         * 그래서 QMember를 직접 생성하여 alias를 다르게 합니다.
+         */
+        QMember memberSub = new QMember("memberSub");
+
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .where(member.age.in(
+                        JPAExpressions
+                                .select(memberSub.age)
+                                .from(memberSub)
+                                .where(memberSub.age.gt(10))
+                )).fetch();
+
+        assertThat(result).extracting("age")
+                          .containsExactly(20, 30, 40);
+    }
+
+    @DisplayName("select 절에도 서브쿼리가 됩니다.")
+    @Test
+    void selectSubQuery() {
+        /**
+         * 서브 쿼리이기 때문에 바깥의 member와 겹치면 안됨
+         * 그래서 QMember를 직접 생성하여 alias를 다르게 합니다.
+         */
+        QMember memberSub = new QMember("memberSub");
+
+        List<Tuple> result = queryFactory
+                .select(member.username,
+                        JPAExpressions
+                                .select(memberSub.age.avg())
+                                .from(memberSub))
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+    /**
+     * from 절의 서브 쿼리 한계
+     * JPA JPQL 서브쿼리의 한계점으로 from 절의 서브쿼리(인라인 뷰)는 지원하지 않음
+     * 당연히 Querydsl도 지원하지 않음
+     * 하이버네이트 구현체를 사용하면 select 절의 서브쿼리는 지원함.
+     * Querydsl도 하이버네이트 구현체를 사용하면 select 절의 서브쿼리를 지원한다.
+     *
+     *
+     * from 절의 서브 쿼리 해결 방안
+     * 1. 서브쿼리를 Join으로 변경한다. (가능할 수도, 불가능할 수도.)
+     * 2. 애플리케이션에서 쿼리를 2번 분리해서 실행하기
+     * 3. nativeSQL을 사용하기
+     *
+     * 근데 안좋은게 훨씬 많다..
+     * 화면에 꽉꽉 채워서 가져오려다보니까 from절안에 From절 들어가는 경우가 은근 생긴다.
+     *
+     */
 }
