@@ -4,12 +4,16 @@ import static com.example.querydsl.entity.QMember.member;
 import static com.example.querydsl.entity.QTeam.team;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
+import javax.persistence.PersistenceUnit;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -409,6 +413,59 @@ public class QuerydslBasicTest {
         for (Tuple tuple : result) {
             System.out.println("tuple = " + tuple);
         }
+    }
+
+    @PersistenceUnit
+    EntityManagerFactory emf;
+
+    /**
+     * 페치 조인은 SQL에서 제공하는 기능은 아님.
+     * SQL 조인을 활용해서 연관된 엔티티를 SQL 한번에 조회하는 기능.
+     * 주로 성능 최적화에 사용
+     */
+    @DisplayName("페치 조인이 없을 때")
+    @Test
+    void no_fetch_join() {
+        /**
+         * 페치 조인시에는 영속성 컨텍스트를 제대로 비워주지 않으면 결과를 제대로 보기 어려움
+         * 그래서 비우고 ㄱ ㄱ
+         */
+        em.flush();
+        em.clear();
+
+        /**
+         * Member와 Team은 현재 Lazy
+         */
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .where(member.username.eq("member1"))
+                .fetchOne(); // Team은 조회하지 않음
+
+        boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam()); // emf에서 team이 영속성 컨텍스트에 로딩되었는지 판단할 수 있음
+        assertFalse(loaded,"페치 조인 미적용");
+    }
+
+    @DisplayName("페치 조인이 있을 때")
+    @Test
+    void fetch_join() {
+        /**
+         * 페치 조인시에는 영속성 컨텍스트를 제대로 비워주지 않으면 결과를 제대로 보기 어려움
+         * 그래서 비우고 ㄱ ㄱ
+         */
+        em.flush();
+        em.clear();
+
+        /**
+         * Member와 Team은 현재 Lazy
+         */
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .join(member.team, team).fetchJoin()
+                .where(member.username.eq("member1"))
+                .fetchOne(); // Team은 조회하지 않음
+
+        boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam()); // emf에서 team이 영속성 컨텍스트에 로딩되었는지 판단할 수 있음
+        assertTrue(loaded,"페치 조인 적용");
     }
 
 }
