@@ -28,6 +28,7 @@ import com.example.querydsl.entity.QTeam;
 import com.example.querydsl.entity.Team;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -564,6 +565,7 @@ public class QuerydslBasicTest {
             System.out.println("tuple = " + tuple);
         }
     }
+
     /**
      * from 절의 서브 쿼리 한계
      * JPA JPQL 서브쿼리의 한계점으로 from 절의 서브쿼리(인라인 뷰)는 지원하지 않음
@@ -581,4 +583,38 @@ public class QuerydslBasicTest {
      * 화면에 꽉꽉 채워서 가져오려다보니까 from절안에 From절 들어가는 경우가 은근 생긴다.
      *
      */
+
+    @DisplayName("케이스 문")
+    @Test
+    void basic_case() {
+        List<Tuple> result = queryFactory
+                .select(member.username, member.age
+                        .when(10).then("열살")
+                        .when(20).then("스무살")
+                        .otherwise("늙어쪙"))
+                .from(member)
+                .fetch();
+
+        for (Tuple s : result) {
+            System.out.println("Tuple = " + s);
+        }
+    }
+
+    @DisplayName("복잡한 Case --> CaseBuilder()를 사용한다.")
+    @Test
+    void complexCase() {
+        List<String> result = queryFactory
+                .select(new CaseBuilder()
+                                .when(member.age.between(0, 20)).then("0~20살")
+                                .when(member.age.between(21, 30)).then("21~30살")
+                                .otherwise("기타"))
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+        // 근데 가급적이면 DB에서 이런 처리를 하지 않음
+        // 최소한의 필터링은 DB에서 하지만, 위와 같이 값을 전환하는 경우는 애플리케이션단에서 처리하는 것을 권장한다.
+    }
 }
