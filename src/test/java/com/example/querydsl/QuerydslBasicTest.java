@@ -30,6 +30,7 @@ import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -287,22 +288,22 @@ public class QuerydslBasicTest {
     @DisplayName("팀 A에 소속된 모든 회원을 찾아라")
     @Test
     void join() {
-        List<Member> result = queryFactory
-                .selectFrom(member)
-                .join(member.team, team) // inner join
-                .where(team.name.eq("teamA"))
-                .fetch();
+//        List<Member> result = queryFactory
+//                .selectFrom(member)
+//                .join(member.team, team) // inner join
+//                .where(team.name.eq("teamA"))
+//                .fetch();
 
-        assertThat(result)
-                .extracting("username")
-                .containsExactly("member1", "member2");
-
-        List<Member> result2 = queryFactory
-                .selectFrom(member)
-                .leftJoin(member.team, team) // left join
-                .where(team.name.eq("teamA"))
-                .fetch();
-
+//        assertThat(result)
+//                .extracting("username")
+//                .containsExactly("member1", "member2");
+//
+//        List<Member> result2 = queryFactory
+//                .selectFrom(member)
+//                .leftJoin(member.team, team) // left join
+//                .where(team.name.eq("teamA"))
+//                .fetch();
+//
         List<Member> result3 = queryFactory
                 .selectFrom(member)
                 .rightJoin(member.team, team) // right join
@@ -622,6 +623,35 @@ public class QuerydslBasicTest {
         // 최소한의 필터링은 DB에서 하지만, 위와 같이 값을 전환하는 경우는 애플리케이션단에서 처리하는 것을 권장한다.
     }
 
+    /**
+     * 문제) 다음과 같은 임의의 순서로 회원을 출력하고 싶을 때, Case문을 이용하여 querydsl로 표현해보기
+     * 1. 0 ~ 30살이 아닌 회원을 가장 먼저 출력
+     * 2. 0 ~ 20살 회원 출력
+     * 3. 21 ~ 30살 회원 출력
+     */
+    @DisplayName("Case 활용 예제")
+    @Test
+    void caseProblem() {
+        NumberExpression<Integer> rankPath = new CaseBuilder()
+                .when(member.age.notBetween(0, 30)).then(1)
+                .when(member.age.between(0, 20)).then(2)
+                .otherwise(3);
+
+        List<Tuple> result = queryFactory
+                .select(member.username, member.age, rankPath)
+                .from(member)
+                .orderBy(rankPath.asc())
+                .fetch();
+
+        for (Tuple tuple : result) {
+            String username = tuple.get(member.username);
+            Integer age = tuple.get(member.age);
+
+            Integer rank = tuple.get(rankPath);
+            System.out.println("username = " + username + " age = " + age + " rank = " + rank);
+        }
+    }
+
     @DisplayName("상수 추가")
     @Test
     void constant() {
@@ -642,7 +672,7 @@ public class QuerydslBasicTest {
         List<String> result = queryFactory
                 .select(member.username.concat("_").concat(member.age.stringValue())) // .stringValue()가 생각보다 쓸일이 많습니다. enum같은 경우에 쓸일이 많아요.
                 .from(member)
-//                .where(member.username.eq("member1"))
+                .where(member.username.eq("member1"))
                 .fetch();
 
         for (String s : result) {

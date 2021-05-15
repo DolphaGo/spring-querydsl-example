@@ -247,7 +247,24 @@ void groupby() {
     assertEquals(35, teamB.get(member.age.avg()));
 }
 ```
+분석해보자
+- `member.team`과 `team` 의 연관관계를 가지고 조인을 시도한다.
+- `join`은 inner join이므로, 연관관계가 없는 것들은 매핑되지 않는다.
+- 연관관계가 묶은 것들은 `groupBy`로 팀의 이름으로 그룹을 짓는다.
+- 팀의 이름과 그룹 내 멤버의 나이 평균을 출력한다.
 
+이때 나가는 쿼리는 다음과 같다.
+```h2
+select
+    team1_.name as col_0_0_, avg(cast(member0_.age as double)) as col_1_0_ 
+from
+    member member0_
+inner join
+    team team1_ on member0_.team_id=team1_.team_id
+group by
+    team1_.name
+```
+- groupBy , 그룹화된 결과를 제한하려면 having을 사용하자.
 
 ## having
 
@@ -269,37 +286,121 @@ void having() {
     assertEquals(35, resultTeam.get(member.age.avg()));
 }
 ```
+분석해보자
+- `member.team`과 `team`의 연관관계로 조인을 한다.
+- 이때, inner join이다.
+- 팀의 이름으로 그룹을 생성한다.
+- 이렇게 만든 팀 그룹에서 멤버 나이의 평균이 20살보다 큰 그룹만을 걸러낸다.
+- 그 중 팀의 이름과 멤버 나이의 평균을 가져온다.
 
-## join
-```java
-@DisplayName("팀 A에 소속된 모든 회원을 찾아라")
-@Test
-void join() {
-    List<Member> result = queryFactory
-            .selectFrom(member)
-            .join(member.team, team) // inner join
-            .where(team.name.eq("teamA"))
-            .fetch();
-
-    assertThat(result)
-            .extracting("username")
-            .containsExactly("member1", "member2");
-
-    List<Member> result2 = queryFactory
-            .selectFrom(member)
-            .leftJoin(member.team, team) // left join
-            .where(team.name.eq("teamA"))
-            .fetch();
-
-    List<Member> result3 = queryFactory
-            .selectFrom(member)
-            .rightJoin(member.team, team) // right join
-            .where(team.name.eq("teamA"))
-            .fetch();
-}
+실행되는 쿼리는 다음과 같다.
+```h2
+    select
+        team1_.name as col_0_0_,
+        avg(cast(member0_.age as double)) as col_1_0_ 
+    from
+        member member0_ 
+    inner join
+        team team1_ 
+            on member0_.team_id=team1_.team_id 
+    group by
+        team1_.name 
+    having
+        avg(cast(member0_.age as double))>?
 ```
 
+
+## join
+
+- join() , innerJoin() : 내부 조인(inner join)
+- leftJoin() : left 외부 조인(left outer join)
+- rightJoin() : rigth 외부 조인(rigth outer join)
+- JPQL의 on과 성능 최적화를 위한 fetch 조인 제공한다.
+
+
+### 기본 조인
+- 조인의 기본 문법은 첫 번째 파라미터에 조인 대상을 지정하고, 두 번째 파라미터에 별칭(alias)으로 사용할 Q 타입을 지정하면 된다.
+
+> Inner join
+```java
+List<Member> result = queryFactory
+        .selectFrom(member)
+        .join(member.team, team) // inner join
+        .where(team.name.eq("teamA"))
+        .fetch();
+```
+실행된 쿼리는 다음과 같다.
+```h2
+select
+    member0_.member_id as member_i1_1_,
+    member0_.age as age2_1_,
+    member0_.team_id as team_id4_1_,
+    member0_.username as username3_1_ 
+from
+    member member0_ 
+inner join
+    team team1_ 
+        on member0_.team_id=team1_.team_id 
+where
+    team1_.name=?
+```
+
+---
+### OuterJoin
+
+> leftJoin
+```java
+List<Member> result2 = queryFactory
+        .selectFrom(member)
+        .leftJoin(member.team, team) // left join
+        .where(team.name.eq("teamA"))
+        .fetch();
+```
+실행된 쿼리
+```h2
+select
+    member0_.member_id as member_i1_1_,
+    member0_.age as age2_1_,
+    member0_.team_id as team_id4_1_,
+    member0_.username as username3_1_ 
+from
+    member member0_ 
+left outer join
+    team team1_ 
+        on member0_.team_id=team1_.team_id 
+where
+    team1_.name=?
+```
+
+> rightJoin
+```java
+List<Member> result3 = queryFactory
+        .selectFrom(member)
+        .rightJoin(member.team, team) // right join
+        .where(team.name.eq("teamA"))
+        .fetch();
+}
+```
+실행된 쿼리
+```h2
+select
+    member0_.member_id as member_i1_1_,
+    member0_.age as age2_1_,
+    member0_.team_id as team_id4_1_,
+    member0_.username as username3_1_ 
+from
+    member member0_ 
+right outer join
+    team team1_ 
+        on member0_.team_id=team1_.team_id 
+where
+    team1_.name=?
+```
+
+
+
 ## theta join
+연관관계가 없는 필드로 조인하는 것을 말한다.
 ```java
 /**
  * 세타 조인
@@ -328,14 +429,18 @@ void theta_join() {
             .contains("teamA", "teamB");
 }
 ```
+- from 절에 여러 엔티티를 선택해서 theta join
+- 기본적으로는 외부 조인이 불가능하다.
+- 그러나 `on`을 사용하면 외부 조인을 가능하게 할 수 있다.
 
+## join `on` 으로 필터링하기
+JPA 2.1부터 지원
 
-## join으로 필터링하기
+`on` 으로 할 수 있는 일
+1. 조인 대상 필터링 <- 이건 `where`로도 같은 결과를 낼 수 있다.
+2. 연관관계가 없는 엔티티의 외부조인 <- 이 기능으로 많이 사용한다.
+
 ```java
-/**
- * 1. 조인 대상 필터링
- * 2. 연관관계 없는 엔티티 외부 조인
- */
 @DisplayName("On절 - 조인대상 필터링")
 @Test
 void join_on_filtering() {
@@ -348,7 +453,7 @@ void join_on_filtering() {
             .from(member)
             .join(member.team, team)
 //                .on(team.name.eq("teamA"))
-            .where(team.name.eq("teamA")) // inner join을 사용할 것이라면, on절보단 익숙한 where로 걸러라.
+            .where(team.name.eq("teamA")) // inner join을 사용할 것이라면, on절보단 익숙한 where로 걸러라. 결과는 똑같다.
             .fetch();
 
     for (Tuple tuple : result) {
@@ -365,9 +470,11 @@ void join_on_filtering() {
     for (Tuple tuple : result2) {
         System.out.println("tuple = " + tuple);
     }
-
 }
 ```
+
+> 참고: on 절을 활용해 조인 대상을 필터링 할 때, 외부조인이 아니라 내부조인(inner join)을 사용하면, where 절에서 필터링 하는 것과 기능이 동일하다. 따라서 on 절을 활용한 조인 대상 필터링을 사용할 때, 내부조인 이면 익숙한 where 절로 해결하고, 정말 외부조인이 필요한 경우에만 이 기능을 사용하자.
+
 
 ## 연관관계 없어도 조인이 가능하다(막조인)
 ```java
@@ -394,15 +501,13 @@ void join_on_no_relation() {
     }
 }
 ```
+- `on`을 사용해서 서로 관계가 없는 필드로 외부 조인하는 기능이 추가되었다.
+- leftJoin() 부분에 일반 조인과 다르게 엔티티 하나만 들어간다.
+    - 일반 조인 : leftJoin(member.team, team)
+    - on 조인 : from(member).leftJoin(team).on(xxx)
+
 
 ```java
-/**
- * on을 사용해서 서로 관계가 없는 필드로 외부 조인하는 기능이 추가되었다.
- * leftJoin() 부분에 일반 조인과 다르게 엔티티 하나만 들어간다.
- * 일반 조인 : leftJoin(member.team, team)
- * on 조인 : from(member).leftJoin(team).on(xxx)
- */
-
 @DisplayName("연관관계가 있을 때의 Simple 조인 쿼리")
 @Test
 void simple_join() {
@@ -424,15 +529,17 @@ void simple_join() {
 ```
 
 ## fetch join
+* 페치 조인은 SQL에서 제공하는 기능은 아님.
+* SQL 조인을 활용해서 연관된 엔티티를 SQL 한번에 조회하는 기능.
+* 주로 성능 최적화에 사용
+- 사용방법
+    - join(), leftJoin() 등 조인 기능 뒤에 fetchJoin() 이라고 추가하면 된다.
+
+
 ```java
 @PersistenceUnit
 EntityManagerFactory emf;
 
-/**
- * 페치 조인은 SQL에서 제공하는 기능은 아님.
- * SQL 조인을 활용해서 연관된 엔티티를 SQL 한번에 조회하는 기능.
- * 주로 성능 최적화에 사용
- */
 @DisplayName("페치 조인이 없을 때")
 @Test
 void no_fetch_join() {
@@ -595,6 +702,7 @@ void selectSubQuery() {
 - 그러니 잘 고려해보도록
 
 ## Case
+- select, 조건절(where), order by에서 사용 가능하다.
 
 ### SimpleCase 문
 ```java
@@ -638,8 +746,62 @@ void complexCase() {
 }
 ```
 
+
+문제) 다음과 같은 임의의 순서로 회원을 출력하고 싶을 때, Case문을 이용하여 querydsl로 표현해보기
+1. 0 ~ 30살이 아닌 회원을 가장 먼저 출력
+2. 0 ~ 20살 회원 출력
+3. 21 ~ 30살 회원 출력
+```java
+@DisplayName("Case 활용 예제")
+@Test
+void caseProblem() {
+    NumberExpression<Integer> rankPath = new CaseBuilder()
+            .when(member.age.notBetween(0, 30)).then(1)
+            .when(member.age.between(0, 20)).then(2)
+            .otherwise(3);
+
+    List<Tuple> result = queryFactory
+            .select(member.username, member.age, rankPath)
+            .from(member)
+            .orderBy(rankPath.asc())
+            .fetch();
+
+    for (Tuple tuple : result) {
+        String username = tuple.get(member.username);
+        Integer age = tuple.get(member.age);
+
+        Integer rank = tuple.get(rankPath);
+        System.out.println("username = " + username + " age = " + age + " rank = " + rank);
+    }
+}
+```
+실행된 쿼리
+```h2
+select
+    member0_.username as col_0_0_,
+    member0_.age as col_1_0_,
+    case 
+        when member0_.age not between 0 and 30 then 1 
+        when member0_.age between 0 and 20 then 2 
+        else 3 
+    end as col_2_0_ 
+from
+    member member0_ 
+order by
+    case 
+        when member0_.age not between 0 and 30 then 1 
+        when member0_.age between 0 and 20 then 2 
+        else 3 
+    end asc
+```
+- Querydsl은 자바 코드로 작성하기 때문에 rankPath 처럼 복잡한 조건을 변수로 선언해서 select 절, orderBy 절에서 함께 사용할 수 있다.
+
+
+
 ## 상수와 문자
 ### 상수 추가하기
+- 상수가 필요하면 `Expressions.constant(xxx)` 사용한다.
+
 ```java
 @DisplayName("상수 추가")
 @Test
@@ -654,6 +816,14 @@ void constant() {
     }
 }
 ```
+실행된 쿼리
+```h2
+select
+    member0_.username as col_0_0_ 
+from
+    member member0_
+```
+> 참고: 위와 같이 최적화가 가능하면 SQL에 constant 값을 넘기지 않는다. 상수를 더하는 것 처럼 최적화가 어려우면 SQL에 constant 값을 넘긴다.
 
 
 ### 문자 추가하기
@@ -673,3 +843,15 @@ void concat() {
     }
 }
 ```
+실행된 쿼리
+```h2
+select
+    ((member0_.username||?)||cast(member0_.age as char)) as col_0_0_ 
+from
+    member member0_ 
+where
+    member0_.username=?
+```
+
+> 참고: member.age.stringValue() 부분이 중요한데, 문자가 아닌 다른 타입들은 stringValue() 로
+문자로 변환할 수 있다. 이 방법은 ENUM을 처리할 때도 자주 사용한다
