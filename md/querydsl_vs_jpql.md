@@ -70,6 +70,15 @@ void startQuerydsl() {
 }
 ```
 
-- 차이점 분석
-    - JPQL에 문법 에러가 있으면 런타임에 오류가 발생함(이거 엄청 안좋음)
-    - Querydsl은 **컴파일시점**에 문법 에러가 잡힘
+- Querydsl?
+  - Querydsl은 JPQL 빌더
+  - EntityManager 로 JPAQueryFactory 생성
+  ```java
+  private JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+  ```
+  
+
+- JPQL vs Querydsl
+    - JPQL은 문법 에러가 있으면 런타임에 오류가 발생함(이거 엄청 안좋음), 파라미터 바인딩 직접
+    - Querydsl은 **컴파일시점**에 문법 에러가 잡힘, 파라미터 바인딩 자동 처리
+  
