@@ -2,4 +2,5 @@
 
 - [프로젝트 생성](md/createQuerydslProject.md)
 - [예제 도메인 모델](md/exampledomain.md)
-- [Querydsl vs JPQL](md/querydslvsjpql.md)
+- [Querydsl vs JPQL](md/querydsl_vs_jpql.md)
+- [JPQL 기초 쿼리](md/querydsl_basic_query)
