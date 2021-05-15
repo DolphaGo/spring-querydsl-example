@@ -314,7 +314,7 @@ public class QuerydslBasicTest {
          */
         em.persist(new Member("teamA"));
         em.persist(new Member("teamB"));
-ㅎ
+
         // 물론 내부적으로 DB가 성능 최적화를 하겠지만요..
         List<Member> result = queryFactory
                 .select(member)
@@ -326,4 +326,89 @@ public class QuerydslBasicTest {
                 .extracting("username")
                 .contains("teamA", "teamB");
     }
+
+    /**
+     * 1. 조인 대상 필터링
+     * 2. 연관관계 없는 엔티티 외부 조인
+     */
+    @DisplayName("On절 - 조인대상 필터링")
+    @Test
+    void join_on_filtering() {
+        /**
+         * 회원과 팀을 조인하면서, 팀 이름이 teamA인 팀만 조인, 회원은 모두 조회
+         * JPQL : select m, t, from Member m left join m.team t on t.name = 'teamA'
+         */
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                .join(member.team, team)
+//                .on(team.name.eq("teamA"))
+                .where(team.name.eq("teamA")) // inner join을 사용할 것이라면, on절보단 익숙한 where로 걸러라.
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+
+        List<Tuple> result2 = queryFactory
+                .select(member, team)
+                .from(member)
+                .leftJoin(member.team, team)
+                .on(team.name.eq("teamA")) // 외부 조인은 on으로 해결하자
+                .fetch();
+
+        for (Tuple tuple : result2) {
+            System.out.println("tuple = " + tuple);
+        }
+
+    }
+
+    /**
+     * 연관관계 없는 엔티티 외부 조인
+     * 회원의 이름이 팀 이름과 같은 대상 외부 조인
+     */
+    @DisplayName("연관관계가 없어도 조인이 가능한 것")
+    @Test
+    void join_on_no_relation() {
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+        em.persist(new Member("teamC"));
+
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                .leftJoin(team)
+                .on(member.username.eq(team.name))
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    /**
+     * on을 사용해서 서로 관계가 없는 필드로 외부 조인하는 기능이 추가되었다.
+     * leftJoin() 부분에 일반 조인과 다르게 엔티티 하나만 들어간다.
+     * 일반 조인 : leftJoin(member.team, team)
+     * on 조인 : from(member).leftJoin(team).on(xxx)
+     */
+
+    @DisplayName("연관관계가 있을 때의 Simple 조인 쿼리")
+    @Test
+    void simple_join() {
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+        em.persist(new Member("teamC"));
+
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                .join(member.team, team) // inner join
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
 }
