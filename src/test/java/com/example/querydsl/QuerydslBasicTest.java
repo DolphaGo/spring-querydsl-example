@@ -2,6 +2,7 @@ package com.example.querydsl;
 
 import static com.example.querydsl.entity.QMember.member;
 import static com.example.querydsl.entity.QTeam.team;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -271,5 +272,58 @@ public class QuerydslBasicTest {
 
         assertEquals("teamB", resultTeam.get(team.name));
         assertEquals(35, resultTeam.get(member.age.avg()));
+    }
+
+    @DisplayName("팀 A에 소속된 모든 회원을 찾아라")
+    @Test
+    void join() {
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .join(member.team, team) // inner join
+                .where(team.name.eq("teamA"))
+                .fetch();
+
+        assertThat(result)
+                .extracting("username")
+                .containsExactly("member1", "member2");
+
+        List<Member> result2 = queryFactory
+                .selectFrom(member)
+                .leftJoin(member.team, team) // left join
+                .where(team.name.eq("teamA"))
+                .fetch();
+
+        List<Member> result3 = queryFactory
+                .selectFrom(member)
+                .rightJoin(member.team, team) // right join
+                .where(team.name.eq("teamA"))
+                .fetch();
+    }
+
+    /**
+     * 세타 조인
+     * 회원의 이름이 팀 이름과 같은 회원 조회 (억지성 예제이긴 하지만, 진짜 연관관계가 없는 것들)
+     */
+    @DisplayName("연관관계가 없어도 조인이 가능한 것")
+    @Test
+    void theta_join() {
+        /**
+         * from 절에 여러 엔티티를 선택해서 세타 조인을 하는 방
+         * 단점 : 외부 조인(outer join)은 불가능하다.
+         * 그런데 최신 버전으로 넘어오면서, on을 이용하면 외부 조인 가능
+         */
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+ㅎ
+        // 물론 내부적으로 DB가 성능 최적화를 하겠지만요..
+        List<Member> result = queryFactory
+                .select(member)
+                .from(member, team)
+                .where(member.username.eq(team.name))
+                .fetch();
+
+        assertThat(result)
+                .extracting("username")
+                .contains("teamA", "teamB");
     }
 }
