@@ -1,4 +1,5 @@
-DEFAULT SETTING
+앞으로의 모든 예제는 다음 테스트 세팅이 가정되어 있습니다.
+### DEFAULT SETTING
 ```java
 @SpringBootTest
 @Transactional

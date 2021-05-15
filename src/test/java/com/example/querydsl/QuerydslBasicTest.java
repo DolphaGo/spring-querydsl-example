@@ -130,21 +130,24 @@ public class QuerydslBasicTest {
     @DisplayName("resultFetch")
     @Test
     void resultFetch() {
-//        List<Member> fetch = queryFactory
-//                .selectFrom(member)
-//                .fetch();
-//
-////        // 단건 조회
-//        Member fetchOne = queryFactory
-//                .selectFrom(member)
-//                .where(member.age.lt(15))
-//                .fetchOne();
-////
-//        Member fetchFirst = queryFactory
-//                .selectFrom(member)
-//                .where(member.age.gt(100))
-//                .fetchFirst();
-//
+        // 리스트 조회
+        List<Member> fetch = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        // 단건 조회
+        Member fetchOne = queryFactory
+                .selectFrom(member)
+                .where(member.age.lt(15))
+                .fetchOne();
+
+        // 처음 한 건 조회
+        Member fetchFirst = queryFactory
+                .selectFrom(member)
+                .where(member.age.gt(100))
+                .fetchFirst();
+
+        // 페이징
         QueryResults<Member> results = queryFactory
                 .selectFrom(member)
                 .offset(1)
@@ -156,9 +159,9 @@ public class QuerydslBasicTest {
         List<Member> content = results.getResults();
         content.forEach(System.out::println);
 
-//        long count = queryFactory
-//                .selectFrom(member)
-//                .fetchCount();
+        long count = queryFactory
+                .selectFrom(member)
+                .fetchCount();
     }
 
     /**
