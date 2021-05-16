@@ -6,3 +6,4 @@
 - [Querydsl Basic query](md/querydsl_basic_query.md)
 - [Projection](md/projection.md)
 - [동적 쿼리](md/dynamic_query.md)
+- [벌크 연산](md/bulk.md)

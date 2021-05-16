@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.querydsl.dto.MemberDto;
@@ -893,9 +894,97 @@ public class QuerydslBasicTest {
     private Predicate allEq(String usernameCond, Integer ageCond) {
         return usernameEq(usernameCond).and(ageEq(ageCond));
     }
+    // 예를 들어서, 광고 상태 isValid, 날짜가 특정 날짜 사이(between)에 있어야 서비스 가능
+    // 이 두개의 조건이 합쳐져 있어야 isServiceable 조건을 만족하는데, 이러한 것들을 종합해서 찾아야 하는 컴포지션 상태에서 적용하기가 매우 좋다.
 
-    // 광고 상태 isValid, 날짜가 특정 날짜 사이에 있다between :
-    // 이 두개의 조건이 합쳐져 있어야 isServiceable일 때처럼 컴포지션 상태에서 적용하기가 매우 좋다.
+    
+    @DisplayName("벌크 업데이트")
+    @Test
+//    @Commit
+    void bulkUpdate() {
+        //===========벌크 연산은 영속 컨텍스트 무시하고 바로 DB로 간다==============
+        // member1 = 10살 => "member1"(영속성컨텍스트), "member1""(DB)
+        // member2 = 20살 => "member2"(영속성컨텍스트), "member2"(DB)
+        // member3 = 30살 => "member3"(영속성컨텍스트), "member3"(DB)
+        // member4 = 40살 => "member4"(영속성컨텍스트), "member4"(DB)
 
+        long count = queryFactory
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.lt(28))
+                .execute();
+
+        // member1 = 10살 => "member1"(영속성컨텍스트), "비회원""(DB)
+        // member2 = 20살 => "member2"(영속성컨텍스트), "비회원"(DB)
+        // member3 = 30살 => "member3"(영속성컨텍스트), "member3"(DB)
+        // member4 = 40살 => "member4"(영속성컨텍스트), "member4"(DB)
+
+        // DB에서 가져온 결과를 영속 컨텍스트에 넣으려고 하지만, 동일성을 위해서 유지가 된다. (Repeatable-Read)
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .fetch();
+        for (Member member1 : result) {
+            System.out.println("member1 = " + member1);
+        }
+    }
+
+    @DisplayName("벌크 연산 실행 후에는 영속 켄텍스트를 초기화해주자")
+    @Test
+    void bulkUpdate_영속컨텍스트_DB_싱크맞추기() {
+        //===========벌크 연산은 영속 컨텍스트 무시하고 바로 DB로 간다==============
+        // member1 = 10살 => "member1"(영속성컨텍스트), "member1""(DB)
+        // member2 = 20살 => "member2"(영속성컨텍스트), "member2"(DB)
+        // member3 = 30살 => "member3"(영속성컨텍스트), "member3"(DB)
+        // member4 = 40살 => "member4"(영속성컨텍스트), "member4"(DB)
+
+        long count = queryFactory
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.lt(28))
+                .execute();
+
+        em.flush();
+        em.clear();
+
+        // member1 = 10살 => "member1"(영속성컨텍스트), "비회원""(DB)
+        // member2 = 20살 => "member2"(영속성컨텍스트), "비회원"(DB)
+        // member3 = 30살 => "member3"(영속성컨텍스트), "member3"(DB)
+        // member4 = 40살 => "member4"(영속성컨텍스트), "member4"(DB)
+
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .fetch();
+        for (Member member1 : result) {
+            System.out.println("member1 = " + member1);
+        }
+    }
+
+    @DisplayName("벌크 연산")
+    @Test
+    void bulkAdd() {
+        long count = queryFactory
+                .update(member)
+                .set(member.age, member.age.add(1))
+                .execute();
+
+        long count2 = queryFactory
+                .update(member)
+                .set(member.age, member.age.add(-1))
+                .execute();
+
+        long count3 = queryFactory
+                .update(member)
+                .set(member.age, member.age.multiply(2))
+                .execute();
+    }
+
+    @DisplayName("삭제 벌크 연산")
+    @Test
+    void bulkDelete() {
+        long execute = queryFactory
+                .delete(member)
+                .where(member.age.gt(18))
+                .execute();
+    }
 
 }
