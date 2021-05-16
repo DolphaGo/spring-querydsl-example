@@ -897,7 +897,6 @@ public class QuerydslBasicTest {
     // 예를 들어서, 광고 상태 isValid, 날짜가 특정 날짜 사이(between)에 있어야 서비스 가능
     // 이 두개의 조건이 합쳐져 있어야 isServiceable 조건을 만족하는데, 이러한 것들을 종합해서 찾아야 하는 컴포지션 상태에서 적용하기가 매우 좋다.
 
-    
     @DisplayName("벌크 업데이트")
     @Test
 //    @Commit
@@ -987,4 +986,46 @@ public class QuerydslBasicTest {
                 .execute();
     }
 
+    @DisplayName("SQL function 호출하기")
+    @Test
+    void sqlFunction() {
+        List<String> result = queryFactory
+                .select(Expressions.stringTemplate(
+                        "function('replace', {0},{1},{2})",
+                        member.username, "member", "M")) // member테이블의 username 중, "member"라는 단어를 M으로 바꿀 것이다.
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @DisplayName("SQL function 호출하기")
+    @Test
+    void sqlFunction2() {
+        List<String> result = queryFactory
+                .select(Expressions.stringTemplate(
+                        "function('lower', {0})",
+                        member.username)) // member테이블의 username을 모두 소문자로 바꿔서 가져온다.
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @DisplayName("SQL function 호출하기")
+    @Test
+    void sqlFunction_바로위의예제_to_querydsl() {
+        List<String> result = queryFactory
+                .select(member.username.lower())
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
 }
