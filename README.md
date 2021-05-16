@@ -4,3 +4,5 @@
 - [예제 도메인 모델](md/exampledomain.md)
 - [Querydsl vs JPQL](md/querydsl_vs_jpql.md)
 - [Querydsl Basic query](md/querydsl_basic_query.md)
+- [Projection](md/projection.md)
+- [동적 쿼리](md/dynamic_query.md)

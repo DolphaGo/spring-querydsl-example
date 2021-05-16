@@ -28,6 +28,7 @@ import com.example.querydsl.entity.Member;
 import com.example.querydsl.entity.QMember;
 import com.example.querydsl.entity.QTeam;
 import com.example.querydsl.entity.Team;
+import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.ExpressionUtils;
@@ -80,7 +81,7 @@ public class QuerydslBasicTest {
         long l = queryFactory.select(member)
                              .from(member)
                              .fetchCount();
-        System.out.println(l+"개 존재");
+        System.out.println(l + "개 존재");
 
         List<Tuple> result = queryFactory.select(member.username, member.age).distinct()
                                          .from(member)
@@ -835,4 +836,29 @@ public class QuerydslBasicTest {
         }
     }
 
+    @DisplayName("BooleanBuilder")
+    @Test
+    void dynamicQuery_BooleanBuilder() {
+        String usernameParam = "member1";
+        Integer ageParam = null;
+
+        List<Member> result = searchMember1(usernameParam, ageParam);
+        assertEquals(1, result.size());
+    }
+
+    // 검색 조건 같은 것들 만들 때 null인 것들은 검색 쿼리에 처리하지 않도록 if 문을 추가했다.
+    private List<Member> searchMember1(String usernameCond, Integer ageCond) {
+        BooleanBuilder builder = new BooleanBuilder();
+        if (usernameCond != null) {
+            builder.and(member.username.eq(usernameCond));
+        }
+        if (ageCond != null) {
+            builder.and(member.age.eq(ageCond));
+        }
+
+        return queryFactory
+                .selectFrom(member)
+                .where(builder) // .and(member.age.lt(10)) 처럼 builder에도 and/or 조합이 가능하다
+                .fetch();
+    }
 }
