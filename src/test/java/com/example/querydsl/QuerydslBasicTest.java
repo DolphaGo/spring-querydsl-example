@@ -32,7 +32,9 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.ExpressionUtils;
+import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
@@ -861,4 +863,39 @@ public class QuerydslBasicTest {
                 .where(builder) // .and(member.age.lt(10)) 처럼 builder에도 and/or 조합이 가능하다
                 .fetch();
     }
+
+    @DisplayName("where로 동적 쿼리 만들기")
+    @Test
+    void dynamicQuery_where() {
+        String usernameParam = "member1";
+        Integer ageParam = 10;
+
+        List<Member> result = searchMember2(usernameParam, ageParam);
+        assertEquals(1, result.size());
+    }
+
+    private List<Member> searchMember2(String usernameCond, Integer ageCond) {
+        return queryFactory
+                .selectFrom(member)
+                .where(usernameEq(usernameCond), ageEq(ageCond)) // where에 null이 들어가면 무시가 된다! 아무역할도 하지 않음
+                .fetch();
+    }
+
+    private BooleanExpression usernameEq(String usernameCond) { // 그냥 Predicate말고, 조립을 위해 BooleanExpression을 사용하는 것이 좋다.
+        return usernameCond != null ? member.username.eq(usernameCond) : null;
+    }
+
+    private BooleanExpression ageEq(Integer ageCond) {
+        return ageCond != null ? member.age.eq(ageCond) : null;
+    }
+
+    // where 동적 쿼리 방식의 엄청난 장점 : 조합을 할 수 있게 된다.
+    private Predicate allEq(String usernameCond, Integer ageCond) {
+        return usernameEq(usernameCond).and(ageEq(ageCond));
+    }
+
+    // 광고 상태 isValid, 날짜가 특정 날짜 사이에 있다between :
+    // 이 두개의 조건이 합쳐져 있어야 isServiceable일 때처럼 컴포지션 상태에서 적용하기가 매우 좋다.
+
+
 }
