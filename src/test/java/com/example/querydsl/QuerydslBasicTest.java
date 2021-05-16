@@ -22,12 +22,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.querydsl.dto.MemberDto;
 import com.example.querydsl.entity.Member;
 import com.example.querydsl.entity.QMember;
 import com.example.querydsl.entity.QTeam;
 import com.example.querydsl.entity.Team;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.ExpressionUtils;
+import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
@@ -677,6 +680,120 @@ public class QuerydslBasicTest {
 
         for (String s : result) {
             System.out.println("s = " + s);
+        }
+    }
+
+    /////////////////////////////////////////////////////////중급/////////////////////////////////////////////////////////////
+
+    @DisplayName("프로젝션 대상이 하나일 때")
+    @Test
+    void simpleProjection() {
+        List<String> result = queryFactory
+                .select(member.username)
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    /**
+     * 결과
+     * s = member1
+     * s = member2
+     * s = member3
+     * s = member4
+     */
+
+    @DisplayName("튜플로 프로젝션하기")
+    @Test
+    void tupleProjection() {
+        List<Tuple> result = queryFactory
+                .select(member.username, member.age)
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            String username = tuple.get(member.username);
+            Integer age = tuple.get(member.age);
+            System.out.println("username = " + username);
+            System.out.println("age = " + age);
+        }
+        // 참고로 튜플은 com.querydsl.core 에 구현되어 있다.
+        // 따라서 이 튜플을 레포지토리 계층까지는 괜찮은데
+        // 리포지토리 계층을 넘어서서 서비스나 컨트롤러 계층에서 사용하는 것은 좋지 않다.
+        // 그래야 나중에 하부 기술을 querydsl에서 다른 기술로 바꾸더라도 앞단을 고치지 않아도 되니까
+    }
+
+    @DisplayName("dto로 프로젝션하기 - jpql 버전")
+    @Test
+    void dtoProjectionByJQPL() {
+        // new operation을 활용하는 방법(패키지를 다 쓰는 과정이 좀 별로다!)
+        List<MemberDto> result = em.createQuery("select new com.example.querydsl.dto.MemberDto(m.username, m.age) from Member m", MemberDto.class)
+                                   .getResultList();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+    @DisplayName("querydsl으로 프로젝션 하기 - Setter") // getter/setter로 값을 넣음 <- 실험해보니 Getter는 의미없고, Setter로 동작함
+    @Test
+    void dtoProjectionByQuerydslSetter() {
+        List<MemberDto> result = queryFactory
+                .select(Projections.bean(MemberDto.class, member.username.as("name"), member.age)) // 필드명이 다르면 as로 해결. 여기서 as를 붙이지 않으면 name에 null이 출력된다.
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+    @DisplayName("querydsl으로 프로젝션 하기 - Field") // getter/setter 없이 값을 바로 필드에 넣음, 대신 이름이 같아야함. 필드명이 다르면 as로 해결
+    @Test
+    void dtoProjectionByQuerydslField() {
+        List<MemberDto> result = queryFactory
+                .select(Projections.fields(MemberDto.class, member.username.as("name"), member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+    @DisplayName("querydsl으로 프로젝션 하기 - Field") // getter/setter 없이 값을 바로 필드에 넣음, 대신 이름이 같아야함. 필드명이 다르면 as로 해결
+    @Test
+    void dtoProjectionByQuerydslField_ExpressionUtils() {
+        QMember memberSub = new QMember("memberSub");
+        List<MemberDto> result = queryFactory
+                .select(Projections.fields(MemberDto.class,
+                                           member.username.as("name"),
+                                           ExpressionUtils.as(// ExpressionUtils를 이용하여 감싸면, 2번째 파라미터로 alias를 줄 수 있습니다.
+                                                              JPAExpressions // subQuery
+                                                                             .select(memberSub.age.max())
+                                                                             .from(memberSub), "age")
+                ))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+    @DisplayName("querydsl으로 프로젝션 하기 - Constructor")
+    @Test
+    void dtoProjectionByQuerydslConstructor() {
+        List<MemberDto> result = queryFactory
+                .select(Projections.constructor(MemberDto.class, member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
         }
     }
 }
