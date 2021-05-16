@@ -23,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.querydsl.dto.MemberDto;
+import com.example.querydsl.dto.QMemberDto;
 import com.example.querydsl.entity.Member;
 import com.example.querydsl.entity.QMember;
 import com.example.querydsl.entity.QTeam;
@@ -64,6 +65,30 @@ public class QuerydslBasicTest {
         em.persist(member3);
         em.persist(member4);
     }
+
+    @DisplayName("distinct test")
+    @Test
+    void distinct_test() {
+        Team teamA = queryFactory
+                .selectFrom(team)
+                .where(team.name.eq("teamA"))
+                .fetchOne();
+
+        Member member2 = new Member("member2", 20, teamA);
+        em.persist(member2);
+
+        long l = queryFactory.select(member)
+                             .from(member)
+                             .fetchCount();
+        System.out.println(l+"개 존재");
+
+        List<Tuple> result = queryFactory.select(member.username, member.age).distinct()
+                                         .from(member)
+                                         .fetch();
+        for (Tuple member1 : result) {
+            System.out.println("member1 = " + member1);
+        }
+    }// 결론 - Row가 완전히 일치하는 것들만 distinct 처리를 해준다!!
 
     @DisplayName("JPQL일 때")
     @Test
@@ -796,4 +821,18 @@ public class QuerydslBasicTest {
             System.out.println("memberDto = " + memberDto);
         }
     }
+
+    @DisplayName("@QueryProjection")
+    @Test
+    void findDtoByQueryProjection() {
+        List<MemberDto> result = queryFactory
+                .select(new QMemberDto(member.username, member.age)) // 컴파일 시점에 타입이 맞지 않으면 오류를 내줍니다.
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
 }

@@ -4,7 +4,7 @@
 field 방식은 setter는 빈 객체로, field에 initFields 방식으로 값을 채워넣고 있다.
 
 1. bean projection일 때
-fieldAccess가 false
+- fieldAccess가 false
    
 ```java
 private List<Method> initMethods(Map<String, ? extends Expression<?>> args) {
@@ -39,8 +39,7 @@ private List<Method> initMethods(Map<String, ? extends Expression<?>> args) {
 ```
    
 2. field projection일 때
-fieldAccess가 true
-   
+- fieldAccess가 true
 ```java
 private List<Field> initFields(Map<String, ? extends Expression<?>> args) {
     List<Field> fields = new ArrayList<Field>(args.size());
@@ -177,6 +176,31 @@ public synchronized Method getWriteMethod() {
 
 ```
 
+Member Entity
+````java
+public class Member {
+  @Id
+  @GeneratedValue
+  @Column(name = "member_id")
+  private Long id;
+  private String username;
+  private int age;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "team_id")
+  private Team team;
+}
+````
+
+
+MemberDTO
+````java
+public class MemberDto {
+    private String name;
+    private int age;
+}
+````
+
 
 ## JPQL
 ```java
@@ -271,3 +295,46 @@ void dtoProjectionByQuerydslConstructor() {
     }
 }
 ```
+
+
+## @QueryProjection
+![img.png](../img/queryprojection.png)
+```java
+@Generated("com.querydsl.codegen.ProjectionSerializer")
+public class QMemberDto extends ConstructorExpression<MemberDto> {
+  private static final long serialVersionUID = -857882546L;
+
+  public QMemberDto(com.querydsl.core.types.Expression<String> name, com.querydsl.core.types.Expression<Integer> age) {
+    super(MemberDto.class, new Class<?>[] { String.class, int.class }, name, age);
+  }
+}
+```
+
+저 super를 따라가보면 다음과 같습니다.
+![img.png](../img/queryprojection_constructor.png)
+
+```java
+@DisplayName("@QueryProjection")
+@Test
+void findDtoByQueryProjection() {
+    List<MemberDto> result = queryFactory
+            .select(new QMemberDto(member.username, member.age)) // 컴파일 시점에 타입이 맞지 않으면 오류를 내줍니다.
+            .from(member)
+            .fetch();
+
+    for (MemberDto memberDto : result) {
+        System.out.println("memberDto = " + memberDto);
+    }
+}
+```
+
+- constructor와의 차이점?
+  - 실행은 됩니다. 컴파일 오류를 못잡아요. 런타임에 오류가 나요
+  - 만약에 arg가 2개인 것만 만들었는데, 3개의 arg를 넣고 만드는 생성자를 호출하면 컴파일엔 모르고 런타임에 알게 됩니다.
+  - 그러나 QueryProjection은 만들어진 것만 표현하기 때문에 컴파일 시점에 생성자를 판단할 수 있다는 것
+  
+
+- @QueryProjection 단점
+  - QType을 계속 만들어줘야 함
+  - DTO가 Querydsl의 의존성을 가져버리게 된다.
+  - 여러 layer에 걸쳐있는 것이 DTO가 일반적인데, querydsl에 의존적이니 순수하지가 않은 것이 단점.
