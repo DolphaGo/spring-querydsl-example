@@ -13,3 +13,5 @@
 - [조회 API 컨트롤러 개발](md/api.md)
 - [실무 활용 - 스프링 데이터 JPA와 Querydsl](md/spring-data-jpa-and-querydsl.md)
 - [스프링 데이터 페이징 활용](md/paging.md)
+- [정렬](md/sort.md)
+- [QuerydslPredicateExecutor](md/querydsl_predicate_executor.md)
