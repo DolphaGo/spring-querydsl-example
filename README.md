@@ -11,3 +11,4 @@
 - [순수 JPA Repository와 Querydsl](md/jpqRepository_vs_querydsl.md)
 - [동적 쿼리와  성능 최적화 조회](md/enhanced_dynamic_query.md)
 - [조회 API 컨트롤러 개발](md/api.md)
+- [실무 활용 - 스프링 데이터 JPA와 Querydsl](md/spring-data-jpa-and-querydsl.md)
