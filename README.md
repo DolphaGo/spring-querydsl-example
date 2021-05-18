@@ -17,3 +17,4 @@
 - [QuerydslPredicateExecutor](md/querydsl_predicate_executor.md)
 - [Querydsl Web](md/querydsl_web.md)
 - [QuerydslRepositorySupport](md/QuerydslRepositorySupport.md)
+- [Querydsl 지원 클래스 직접 만들기](md/advanceQuerydslRepositorySupport.md)
