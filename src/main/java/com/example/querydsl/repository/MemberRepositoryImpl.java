@@ -5,9 +5,12 @@ import static com.example.querydsl.entity.QTeam.team;
 
 import java.util.List;
 
+import javax.persistence.EntityManager;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.support.QuerydslRepositorySupport;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.util.StringUtils;
 
@@ -25,13 +28,34 @@ import lombok.RequiredArgsConstructor;
 /**
  * MemberRepository + Impl (규칙이 존재합니다. `Impl`)
  */
-@RequiredArgsConstructor
-public class MemberRepositoryImpl implements MemberRepositoryCustom {
+//@RequiredArgsConstructor
+public class MemberRepositoryImpl extends QuerydslRepositorySupport implements MemberRepositoryCustom {
 
-    private final JPQLQueryFactory queryFactory;
+    public MemberRepositoryImpl() {
+        super(Member.class);
+    }
+
+//    private final JPQLQueryFactory queryFactory;
 
     @Override
     public List<MemberTeamDto> search(final MemberSearchCondition condition) {
+        EntityManager entityManager = getEntityManager();
+        List<MemberTeamDto> result = from(member) // querydsl 3 버전은 from으로 시작했었다.
+                                                  .leftJoin(member.team, team)
+                                                  .where(
+                                                          usernameEq(condition.getUsername()),
+                                                          teamNameEq(condition.getTeamName()),
+                                                          ageGoe(condition.getAgeGoe()),
+                                                          ageLoe(condition.getAgeLoe())
+                                                  )
+                                                  .select(new QMemberTeamDto(
+                                                          member.id,
+                                                          member.username,
+                                                          member.age,
+                                                          team.id,
+                                                          team.name))
+                                                  .fetch();
+
         return queryFactory
                 .select(new QMemberTeamDto(
                         member.id,
@@ -70,6 +94,33 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize()) // 한 페이지에 몇개까지?
                 .fetchResults(); // 카운트 쿼리까지 가져옴
+
+        List<MemberTeamDto> content = result.getResults();
+        long total = result.getTotal();
+
+        return new PageImpl<>(content, pageable, total);
+    }
+
+    @Override
+    public Page<MemberTeamDto> searchPageSimple2(final MemberSearchCondition condition, final Pageable pageable) {
+        JPQLQuery<MemberTeamDto> jpaQuery = from(member)
+                .leftJoin(member.team, team)
+                .where(
+                        usernameEq(condition.getUsername()),
+                        teamNameEq(condition.getTeamName()),
+                        ageGoe(condition.getAgeGoe()),
+                        ageLoe(condition.getAgeLoe())
+                )
+                .select(new QMemberTeamDto(
+                        member.id,
+                        member.username,
+                        member.age,
+                        team.id,
+                        team.name));
+
+
+        JPQLQuery<MemberTeamDto> query = getQuerydsl().applyPagination(pageable, jpaQuery);
+        query.fetchResults();
 
         List<MemberTeamDto> content = result.getResults();
         long total = result.getTotal();
