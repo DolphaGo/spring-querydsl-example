@@ -84,5 +84,82 @@ public Page<MemberTeamDto> searchPageComplex(final MemberSearchCondition conditi
 
     return new PageImpl<>(content, pageable, total);
 }
-
 ```
+
+## Count Query 최적화
+
+- 카운트 쿼리가 생략가능한 경우 생략해서 처리
+    - 페이지 시작이면서 컨텐츠 사이즈가 페이지 사이즈보다 작을 때
+    - 마지막 페이지 일 때 (offset + 컨텐츠 사이즈를 더해서 전체 사이즈를 구함!)
+  
+```java
+// 극한의 카운트 쿼리
+public Page<MemberTeamDto> enhancedPagingQuery(final MemberSearchCondition condition, final Pageable pageable) {
+    List<MemberTeamDto> content = queryFactory
+            .select(new QMemberTeamDto(
+                    member.id,
+                    member.username,
+                    member.age,
+                    team.id,
+                    team.name))
+            .from(member)
+            .leftJoin(member.team, team)
+            .where(
+                    usernameEq(condition.getUsername()),
+                    teamNameEq(condition.getTeamName()),
+                    ageGoe(condition.getAgeGoe()),
+                    ageLoe(condition.getAgeLoe())
+            )
+            .offset(pageable.getOffset())
+            .limit(pageable.getPageSize()) // 한 페이지에 몇개까지?
+            .fetch();
+
+    JPQLQuery<Member> countQuery = queryFactory
+            .select(member)
+            .from(member)
+            .leftJoin(member.team, team)
+            .where(
+                    usernameEq(condition.getUsername()),
+                    teamNameEq(condition.getTeamName()),
+                    ageGoe(condition.getAgeGoe()),
+                    ageLoe(condition.getAgeLoe())
+            );
+
+    return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchCount); // 마지막 페이지에서는 카운트 쿼리를 날리지 않는다.
+}
+```
+
+이 `PageableExecutionUtils.getPage()` 로 리턴하는데, 내부 코드를 보면 다음과 같다.
+```java
+public static <T> Page<T> getPage(List<T> content, Pageable pageable, LongSupplier totalSupplier) {
+
+    Assert.notNull(content, "Content must not be null!");
+    Assert.notNull(pageable, "Pageable must not be null!");
+    Assert.notNull(totalSupplier, "TotalSupplier must not be null!");
+
+    if (pageable.isUnpaged() || pageable.getOffset() == 0) {
+
+        if (pageable.isUnpaged() || pageable.getPageSize() > content.size()) {
+            return new PageImpl<>(content, pageable, content.size());
+        }
+
+        return new PageImpl<>(content, pageable, totalSupplier.getAsLong());
+    }
+
+    if (content.size() != 0 && pageable.getPageSize() > content.size()) {
+        return new PageImpl<>(content, pageable, pageable.getOffset() + content.size());
+    }
+
+    return new PageImpl<>(content, pageable, totalSupplier.getAsLong());
+}
+```
+
+1. 페이징 정보가 없거나, 데이터 시작 지점(offset=0)이라면,
+  - 그 중 페이징 정보가 없거나, 페이징 정보로 가져온 개수가 한 페이지 사이즈 크기보다 작다면
+    - 그대로 `content.size()`를 `total Count`로 리턴한다.
+  - 그 외는 페이징 쿼리(Supplier)를 실행시켜서 Long으로 변환하여 total 개수를 반환한다.
+
+2. 페이징 정보 중 데이터 시작 지점이 아니면서, 한 페이지 사이즈 크기보다 쿼리로 퍼올린 개수가 작다면
+  - 쿼리를 직접 날리지 않고도 `offset` + `content.size()`가 곧 total 개수가 된다.
+
+3. 그 외는 카운트 쿼리로 넘겨받은 supplier를 실행시켜 total 개수를 얻어낸다.

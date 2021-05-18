@@ -8,13 +8,16 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.util.StringUtils;
 
 import com.example.querydsl.dto.MemberSearchCondition;
 import com.example.querydsl.dto.MemberTeamDto;
 import com.example.querydsl.dto.QMemberTeamDto;
+import com.example.querydsl.entity.Member;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.JPQLQuery;
 import com.querydsl.jpa.JPQLQueryFactory;
 
 import lombok.RequiredArgsConstructor;
@@ -114,6 +117,41 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize()) // 한 페이지에 몇개까지?
                 .fetch();
+    }
+
+    // 극한의 카운트 쿼리
+    public Page<MemberTeamDto> enhancedPagingQuery(final MemberSearchCondition condition, final Pageable pageable) {
+        List<MemberTeamDto> content = queryFactory
+                .select(new QMemberTeamDto(
+                        member.id,
+                        member.username,
+                        member.age,
+                        team.id,
+                        team.name))
+                .from(member)
+                .leftJoin(member.team, team)
+                .where(
+                        usernameEq(condition.getUsername()),
+                        teamNameEq(condition.getTeamName()),
+                        ageGoe(condition.getAgeGoe()),
+                        ageLoe(condition.getAgeLoe())
+                )
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize()) // 한 페이지에 몇개까지?
+                .fetch();
+
+        JPQLQuery<Member> countQuery = queryFactory
+                .select(member)
+                .from(member)
+                .leftJoin(member.team, team)
+                .where(
+                        usernameEq(condition.getUsername()),
+                        teamNameEq(condition.getTeamName()),
+                        ageGoe(condition.getAgeGoe()),
+                        ageLoe(condition.getAgeLoe())
+                );
+
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchCount); // 마지막 페이지에서는 카운트 쿼리를 날리지 않는다.
     }
 
     private BooleanExpression usernameEq(final String username) { //BooleanExpression으로 해야 나중에 Composition이 가능하다.
