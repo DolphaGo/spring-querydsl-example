@@ -1,24 +1,26 @@
 package com.example.querydsl;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+import javax.persistence.EntityManager;
 
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+
+import com.querydsl.jpa.impl.JPAQueryFactory;
 
 @SpringBootApplication
 public class QuerydslApplication {
 
     public static void main(String[] args) {
-        http://www.google.com
-        for (int i = 1; i < 5; ) {
-            if (i++ == 3) { break http; }
-            System.out.println(i);
-        }
+        SpringApplication.run(QuerydslApplication.class);
     }
-    //        SpringApplication.run(QuerydslApplication.class, args);
 
+    /**
+     * Spring Bean으로 등록해놓고 다른 코드에서 DI 형태로 사용할 수도 있다.
+     */
+    @Bean
+    JPAQueryFactory jpaQueryFactory(EntityManager em) {
+        return new JPAQueryFactory(em);
+    }
 }
+
