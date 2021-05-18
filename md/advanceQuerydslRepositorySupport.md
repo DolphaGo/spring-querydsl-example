@@ -27,7 +27,7 @@ public abstract class Querydsl4RepositorySupport {
         SimpleEntityPathResolver resolver = SimpleEntityPathResolver.INSTANCE;
         EntityPath path = resolver.createPath(entityInformation.getJavaType());
         this.entityManager = entityManager;
-        this.querydsl = new Querydsl(entityManager, new PathBuilder<>(path.getType(), path.getMetadata())); // querydsl에 path를 제대로 주어야 sort가 동작해서, sort 이슈를 해결하기 위한 것임
+        this.querydsl = new Querydsl(entityManager, new PathBuilder<>(path.getType(), path.getMetadata())); // path를 줘야 sort가 제대로 동작을 해서, sort 버그를 잡아주기 위함
         this.queryFactory = new JPAQueryFactory(entityManager);
     }
 
@@ -73,109 +73,108 @@ public abstract class Querydsl4RepositorySupport {
 }
 ```
 
-페이징 쿼리 구현
 
+> Simple 페이징 쿼리 구현
+
+기존 방식
 ```java
-public Page<Member> searchPageByApplyPage(MemberSearchCondition condition,Pageable pageable){
-        JPAQuery<Member> query=selectFrom(member)
-        .leftJoin(member.team,team)
-        .where(usernameEq(condition.getUsername()),
-        teamNameEq(condition.getTeamName()),
-        ageGoe(condition.getAgeGoe()),
-        ageLoe(condition.getAgeLoe())
-        );
+public Page<Member> searchPageByApplyPage(MemberSearchCondition condition, Pageable pageable) {
+    JPAQuery<Member> query = selectFrom(member)
+            .leftJoin(member.team, team)
+            .where(usernameEq(condition.getUsername()),
+                   teamNameEq(condition.getTeamName()),
+                   ageGoe(condition.getAgeGoe()),
+                   ageLoe(condition.getAgeLoe())
+            );
 
-        List<Member> content=getQuerydsl().applyPagination(pageable,query).fetch();
+    List<Member> content = getQuerydsl().applyPagination(pageable, query).fetch();
 
-        return PageableExecutionUtils.getPage(content,pageable,query::fetchCount);
-        }
+    return PageableExecutionUtils.getPage(content, pageable, query::fetchCount);
+}
 ```
-
 기존 `QuerydslRepositorySupport` 방식을 다음과 같이 람다로 깔끔하게 풀어냄
 
 ```java
-public Page<Member> applyPagination(MemberSearchCondition condition,Pageable pageable){
-        return applyPagination(pageable,query->query
-        .selectFrom(member)
-        .leftJoin(member.team,team)
-        .where(usernameEq(condition.getUsername()),
-        teamNameEq(condition.getTeamName()),
-        ageGoe(condition.getAgeGoe()),
-        ageLoe(condition.getAgeLoe())
-        )
-        );
-        }
+public Page<Member> applyPagination(MemberSearchCondition condition, Pageable pageable) {
+    return applyPagination(pageable, query -> query
+            .selectFrom(member)
+            .leftJoin(member.team, team)
+            .where(usernameEq(condition.getUsername()),
+                   teamNameEq(condition.getTeamName()),
+                   ageGoe(condition.getAgeGoe()),
+                   ageLoe(condition.getAgeLoe())
+            )
+    );
+}
 ```
 
-카운트 쿼리를 분리했을 때
+> 카운트 쿼리를 분리했을 때
 
-기존 방법
-
+기존 방식
 ```java
 @Override
-public Page<MemberTeamDto> searchPageComplex(final MemberSearchCondition condition,final Pageable pageable){
-        List<MemberTeamDto> content=getContent(condition,pageable); // 카운트 쿼리 안가져옴(최적화를 위해)
-        long total=getTotal(condition);        // select와 카운트 쿼리 분리
-        return new PageImpl<>(content,pageable,total);
-        }
+public Page<MemberTeamDto> searchPageComplex(final MemberSearchCondition condition, final Pageable pageable) {
+    List<MemberTeamDto> content = getContent(condition, pageable); // 카운트 쿼리 안가져옴(최적화를 위해)
+    long total = getTotal(condition);        // select와 카운트 쿼리 분리
+    return new PageImpl<>(content, pageable, total);
+}
 
-private long getTotal(final MemberSearchCondition condition){
-        long total=queryFactory
-        .select(member)
-        .from(member)
-        .leftJoin(member.team,team)
-        .where(
-        usernameEq(condition.getUsername()),
-        teamNameEq(condition.getTeamName()),
-        ageGoe(condition.getAgeGoe()),
-        ageLoe(condition.getAgeLoe())
-        ).fetchCount();
-        return total;
-        }
+private long getTotal(final MemberSearchCondition condition) {
+    long total = queryFactory
+            .select(member)
+            .from(member)
+            .leftJoin(member.team, team)
+            .where(
+                    usernameEq(condition.getUsername()),
+                    teamNameEq(condition.getTeamName()),
+                    ageGoe(condition.getAgeGoe()),
+                    ageLoe(condition.getAgeLoe())
+            ).fetchCount();
+    return total;
+}
 
-private List<MemberTeamDto> getContent(final MemberSearchCondition condition,final Pageable pageable){
-        return queryFactory
-        .select(new QMemberTeamDto(
-        member.id,
-        member.username,
-        member.age,
-        team.id,
-        team.name))
-        .from(member)
-        .leftJoin(member.team,team)
-        .where(
-        usernameEq(condition.getUsername()),
-        teamNameEq(condition.getTeamName()),
-        ageGoe(condition.getAgeGoe()),
-        ageLoe(condition.getAgeLoe())
-        )
-        .offset(pageable.getOffset())
-        .limit(pageable.getPageSize()) // 한 페이지에 몇개까지?
-        .fetch();
-        }
+private List<MemberTeamDto> getContent(final MemberSearchCondition condition, final Pageable pageable) {
+    return queryFactory
+            .select(new QMemberTeamDto(
+                    member.id,
+                    member.username,
+                    member.age,
+                    team.id,
+                    team.name))
+            .from(member)
+            .leftJoin(member.team, team)
+            .where(
+                    usernameEq(condition.getUsername()),
+                    teamNameEq(condition.getTeamName()),
+                    ageGoe(condition.getAgeGoe()),
+                    ageLoe(condition.getAgeLoe())
+            )
+            .offset(pageable.getOffset())
+            .limit(pageable.getPageSize()) // 한 페이지에 몇개까지?
+            .fetch();
+}
 ```
 
 람다를 이용하여 한 번에 처리
-
 ```java
-public Page<Member> applyPagination2(MemberSearchCondition condition,Pageable pageable){
-        return applyPagination(pageable,
-        contentQuery->contentQuery
-        .selectFrom(member)
-        .leftJoin(member.team,team)
-        .where(usernameEq(condition.getUsername()),
-        teamNameEq(condition.getTeamName()),
-        ageGoe(condition.getAgeGoe()),
-        ageLoe(condition.getAgeLoe())
-        ),
-        countQuery->countQuery
-        .select(member.id)
-        .from(member)
-        .leftJoin(member.team,team)
-        .where(usernameEq(condition.getUsername()),
-        teamNameEq(condition.getTeamName()),
-        ageGoe(condition.getAgeGoe()),
-        ageLoe(condition.getAgeLoe()))
-        );
-        }
+public Page<Member> applyPagination2(MemberSearchCondition condition, Pageable pageable) {
+    return applyPagination(pageable,
+                           contentQuery -> contentQuery
+                                   .selectFrom(member)
+                                   .leftJoin(member.team, team)
+                                   .where(usernameEq(condition.getUsername()),
+                                          teamNameEq(condition.getTeamName()),
+                                          ageGoe(condition.getAgeGoe()),
+                                          ageLoe(condition.getAgeLoe())
+                                   ),
+                           countQuery -> countQuery
+                                   .select(member.id)
+                                   .from(member)
+                                   .leftJoin(member.team, team)
+                                   .where(usernameEq(condition.getUsername()),
+                                          teamNameEq(condition.getTeamName()),
+                                          ageGoe(condition.getAgeGoe()),
+                                          ageLoe(condition.getAgeLoe()))
+    );
+}
 ```
