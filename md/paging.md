@@ -86,6 +86,9 @@ public Page<MemberTeamDto> searchPageComplex(final MemberSearchCondition conditi
 }
 ```
 
+- 전체 카운트를 조회 하는 방법을 최적화 할 수 있으면 이렇게 분리하면 된다. (예를 들어서 전체 카운트를 조회할 때 조인 쿼리를 줄일 수 있다면 상당한 효과가 있다.)
+- 코드를 리펙토링해서 내용 쿼리과 전체 카운트 쿼리를 읽기 좋게 분리하면 좋다.
+
 ## Count Query 최적화
 
 - 카운트 쿼리가 생략가능한 경우 생략해서 처리
@@ -163,3 +166,57 @@ public static <T> Page<T> getPage(List<T> content, Pageable pageable, LongSuppli
   - 쿼리를 직접 날리지 않고도 `offset` + `content.size()`가 곧 total 개수가 된다.
 
 3. 그 외는 카운트 쿼리로 넘겨받은 supplier를 실행시켜 total 개수를 얻어낸다.
+
+
+
+데이터를 100개를 넣어놓은 상황
+
+> `offset=0`, 전체 개수보다 작은 값으로 limit(pageSize)를 줄 때
+- selectQuery와 countQuery가 모두 날아가게 된다.
+```h2
+select
+    member0_.member_id as col_0_0_,
+    member0_.username as col_1_0_,
+    member0_.age as col_2_0_,
+    team1_.team_id as col_3_0_,
+    team1_.name as col_4_0_
+from
+    member member0_
+        left outer join
+    team team1_
+    on member0_.team_id=team1_.team_id limit ?
+    
+2021-05-19 03:31:50.242  INFO 85588 --- [nio-8080-exec-3] p6spy                                    : #1621362710242 | took 0ms | statement | connection 9| url jdbc:h2:tcp://localhost/~/querydsl
+select member0_.member_id as col_0_0_, member0_.username as col_1_0_, member0_.age as col_2_0_, team1_.team_id as col_3_0_, team1_.name as col_4_0_ from member member0_ left outer join team team1_ on member0_.team_id=team1_.team_id limit ?
+select member0_.member_id as col_0_0_, member0_.username as col_1_0_, member0_.age as col_2_0_, team1_.team_id as col_3_0_, team1_.name as col_4_0_ from member member0_ left outer join team team1_ on member0_.team_id=team1_.team_id limit 20;
+
+2021-05-19 03:31:50.243 DEBUG 85588 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+select
+    count(member0_.member_id) as col_0_0_
+from
+    member member0_
+        left outer join
+    team team1_
+    on member0_.team_id=team1_.team_id
+
+2021-05-19 03:31:50.243  INFO 85588 --- [nio-8080-exec-3] p6spy                                    : #1621362710243 | took 0ms | statement | connection 9| url jdbc:h2:tcp://localhost/~/querydsl
+select count(member0_.member_id) as col_0_0_ from member member0_ left outer join team team1_ on member0_.team_id=team1_.team_id
+select count(member0_.member_id) as col_0_0_ from member member0_ left outer join team team1_ on member0_.team_id=team1_.team_id;
+```
+
+
+> `offset=0`, 전체 개수보다 큰 값으로 limit(pageSize)을 줄 때
+- Select Query만 나간다.
+```h2
+select
+    member0_.member_id as col_0_0_,
+    member0_.username as col_1_0_,
+    member0_.age as col_2_0_,
+    team1_.team_id as col_3_0_,
+    team1_.name as col_4_0_ 
+from
+    member member0_ 
+left outer join
+    team team1_ 
+        on member0_.team_id=team1_.team_id limit ?
+```

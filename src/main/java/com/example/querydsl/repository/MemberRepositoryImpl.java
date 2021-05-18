@@ -120,7 +120,7 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
     }
 
     // 극한의 카운트 쿼리
-    public Page<MemberTeamDto> enhancedPagingQuery(final MemberSearchCondition condition, final Pageable pageable) {
+    public Page<MemberTeamDto> searchPageExtremeCountQuery(final MemberSearchCondition condition, final Pageable pageable) {
         List<MemberTeamDto> content = queryFactory
                 .select(new QMemberTeamDto(
                         member.id,
