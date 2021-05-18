@@ -115,6 +115,7 @@ JPAQueryFactory queryFactory;
     - 그 이유는 JPAQueryFactory의 동시성 문제는 EntityManager에 의존하게 되는데
     - 이 `EntityManager`는 Spring에 엮여서 쓰면 동시성과 상관없이 트랜잭션 단위로 따로따로 분리되어 동작하게 됨
     - 스프링에서는 EntityManager를 진짜 영속성 컨텍스트를 주는 것이 아니라, 프록시를 제공하는데
-    - 이를 `트랜잭션 단위`로 다 다른 곳에 바인딩되도록 라우팅을 해줍니다.
+    - 이를 `트랜잭션 단위`로 다 다른 곳(진짜 엔티티 매니저)
+      에 바인딩되도록 라우팅을 해줍니다.
     -> 문제 없다!
       

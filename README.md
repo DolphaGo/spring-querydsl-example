@@ -9,3 +9,4 @@
 - [벌크 연산](md/bulk.md)
 - [SQL function 호출](md/sql_function.md)
 - [순수 JPA Repository와 Querydsl](md/jpqRepository_vs_querydsl.md)
+- [동적 쿼리와  성능 최적화 조회](md/enhanced_dynamic_query.md)
