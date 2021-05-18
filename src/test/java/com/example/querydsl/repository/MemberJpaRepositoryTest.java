@@ -60,9 +60,9 @@ class MemberJpaRepositoryTest {
         assertEquals(member, result2.get(0));
     }
 
-    @DisplayName("조건 성능 최적화")
+    @DisplayName("where절 동적 쿼리")
     @Test
-    void searchTest() {
+    void searchTest_where절() {
         Team teamA = new Team("teamA");
         Team teamB = new Team("teamB");
         em.persist(teamA);
@@ -78,12 +78,12 @@ class MemberJpaRepositoryTest {
         em.persist(member4);
 
         MemberSearchCondition condition = new MemberSearchCondition();
-//        condition.setAgeGoe(35);
-//        condition.setAgeGoe(40);
-//        condition.setTeamName("teamB");
+        condition.setAgeGoe(35);
+        condition.setAgeGoe(40);
+        condition.setTeamName("teamB");
 
-        List<MemberTeamDto> result = memberJpaRepository.searchByBuilder(condition);
-//        assertThat(result).extracting("username").containsExactly("member4");
+        List<MemberTeamDto> result = memberJpaRepository.search(condition);
+        assertThat(result).extracting("username").containsExactly("member4");
     }
 
 }

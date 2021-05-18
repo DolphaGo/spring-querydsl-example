@@ -131,3 +131,95 @@ left outer join
 
 
 ## Where 절 파라미터 사용
+
+
+```java
+public List<MemberTeamDto> search(MemberSearchCondition condition) {
+    return queryFactory
+            .select(new QMemberTeamDto(
+                    member.id,
+                    member.username,
+                    member.age,
+                    team.id,
+                    team.name))
+            .from(member)
+            .leftJoin(member.team, team)
+            .where(
+                    usernameEq(condition.getUsername()),
+                    teamNameEq(condition.getTeamName()),
+                    ageGoe(condition.getAgeGoe()),
+                    ageLoe(condition.getAgeLoe())
+            )
+            .fetch();
+}
+
+private BooleanExpression usernameEq(final String username) { //BooleanExpression으로 해야 나중에 Composition이 가능하다.
+    return StringUtils.hasText(username) ? member.username.eq(username) : null;
+}
+
+private BooleanExpression teamNameEq(final String teamName) {
+    return StringUtils.hasText(teamName) ? team.name.eq(teamName) : null;
+}
+
+private BooleanExpression ageGoe(final Integer ageGoe) {
+    return ageGoe != null ? member.age.goe(ageGoe) : null;
+}
+
+private BooleanExpression ageLoe(final Integer ageLoe) {
+    return ageLoe != null ? member.age.loe(ageLoe) : null;
+}
+```
+
+Test
+```java
+@DisplayName("where절 동적 쿼리")
+@Test
+void searchTest_where절() {
+    Team teamA = new Team("teamA");
+    Team teamB = new Team("teamB");
+    em.persist(teamA);
+    em.persist(teamB);
+
+    Member member1 = new Member("member1", 10, teamA);
+    Member member2 = new Member("member2", 20, teamA);
+    Member member3 = new Member("member3", 30, teamB);
+    Member member4 = new Member("member4", 40, teamB);
+    em.persist(member1);
+    em.persist(member2);
+    em.persist(member3);
+    em.persist(member4);
+
+    MemberSearchCondition condition = new MemberSearchCondition();
+    condition.setAgeGoe(35);
+    condition.setAgeGoe(40);
+    condition.setTeamName("teamB");
+
+    List<MemberTeamDto> result = memberJpaRepository.search(condition);
+    assertThat(result).extracting("username").containsExactly("member4");
+}
+```
+- where절의 장점
+    - Composition !!
+    - 만약 위와 같이 MemberTeamDto가 아니라 Member를 조회해야 하는 상황이라면?
+    ```java
+    public List<Member> searchMember(MemberSearchCondition condition) {
+        return queryFactory
+                .selectFrom(member)
+                .leftJoin(member.team, team)
+                .where(
+                        usernameEq(condition.getUsername()),
+                        teamNameEq(condition.getTeamName()),
+                        ageGoe(condition.getAgeGoe()),
+                        ageLoe(condition.getAgeLoe())
+                )
+                .fetch();
+    }
+    ```
+    - 그대로 사용이 가능해진다.
+    - 또한 조합이 가능하다.
+    ```java
+    private BooleanExpression ageBetween(int ageLoe, int ageGoe) {
+        return ageLoe(ageLoe).and(ageGoe(ageGoe));
+    }
+    ```
+    - 그리고 위의 코드를 바로 다른 곳의 `BooleanExpression`으로 활용할 수 있다.
