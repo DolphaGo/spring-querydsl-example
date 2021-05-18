@@ -22,39 +22,39 @@ import com.querydsl.core.QueryResults;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPQLQuery;
 import com.querydsl.jpa.JPQLQueryFactory;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import lombok.RequiredArgsConstructor;
 
 /**
  * MemberRepository + Impl (규칙이 존재합니다. `Impl`)
  */
-//@RequiredArgsConstructor
 public class MemberRepositoryImpl extends QuerydslRepositorySupport implements MemberRepositoryCustom {
+    private final JPAQueryFactory queryFactory;
 
     public MemberRepositoryImpl() {
         super(Member.class);
+        queryFactory = new JPAQueryFactory(getEntityManager());
     }
-
-//    private final JPQLQueryFactory queryFactory;
 
     @Override
     public List<MemberTeamDto> search(final MemberSearchCondition condition) {
-        EntityManager entityManager = getEntityManager();
-        List<MemberTeamDto> result = from(member) // querydsl 3 버전은 from으로 시작했었다.
-                                                  .leftJoin(member.team, team)
-                                                  .where(
-                                                          usernameEq(condition.getUsername()),
-                                                          teamNameEq(condition.getTeamName()),
-                                                          ageGoe(condition.getAgeGoe()),
-                                                          ageLoe(condition.getAgeLoe())
-                                                  )
-                                                  .select(new QMemberTeamDto(
-                                                          member.id,
-                                                          member.username,
-                                                          member.age,
-                                                          team.id,
-                                                          team.name))
-                                                  .fetch();
+//        EntityManager entityManager = getEntityManager();
+//        List<MemberTeamDto> result = from(member) // querydsl 3 버전은 from으로 시작했었다.
+//                                                  .leftJoin(member.team, team)
+//                                                  .where(
+//                                                          usernameEq(condition.getUsername()),
+//                                                          teamNameEq(condition.getTeamName()),
+//                                                          ageGoe(condition.getAgeGoe()),
+//                                                          ageLoe(condition.getAgeLoe())
+//                                                  )
+//                                                  .select(new QMemberTeamDto(
+//                                                          member.id,
+//                                                          member.username,
+//                                                          member.age,
+//                                                          team.id,
+//                                                          team.name))
+//                                                  .fetch();
 
         return queryFactory
                 .select(new QMemberTeamDto(
@@ -101,7 +101,6 @@ public class MemberRepositoryImpl extends QuerydslRepositorySupport implements M
         return new PageImpl<>(content, pageable, total);
     }
 
-    @Override
     public Page<MemberTeamDto> searchPageSimple2(final MemberSearchCondition condition, final Pageable pageable) {
         JPQLQuery<MemberTeamDto> jpaQuery = from(member)
                 .leftJoin(member.team, team)
@@ -118,14 +117,10 @@ public class MemberRepositoryImpl extends QuerydslRepositorySupport implements M
                         team.id,
                         team.name));
 
-
         JPQLQuery<MemberTeamDto> query = getQuerydsl().applyPagination(pageable, jpaQuery);
-        query.fetchResults();
+        QueryResults<MemberTeamDto> results = query.fetchResults();
 
-        List<MemberTeamDto> content = result.getResults();
-        long total = result.getTotal();
-
-        return new PageImpl<>(content, pageable, total);
+        return new PageImpl<>(results.getResults(), pageable, results.getTotal());
     }
 
     @Override
