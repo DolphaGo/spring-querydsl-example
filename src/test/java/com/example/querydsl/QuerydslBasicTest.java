@@ -226,7 +226,7 @@ public class QuerydslBasicTest {
 //
 //        assertEquals("member5", member5.getUsername());
 //        assertEquals("member6", member6.getUsername());
-//        Assertions.assertNull(memberNull.getUsername());
+//        Assertions.assertNull(memberNull.getUsernmea());
     }
 
     @DisplayName("페이징")
