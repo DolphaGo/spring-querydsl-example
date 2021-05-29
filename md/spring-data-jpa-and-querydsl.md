@@ -26,7 +26,7 @@ public interface MemberRepositoryCustom {
 @RequiredArgsConstructor
 public class MemberRepositoryImpl implements MemberRepositoryCustom {
 
-    private final JPQLQueryFactory queryFactory;
+    private final JPAQueryFactory queryFactory;
 
     @Override
     public List<MemberTeamDto> search(final MemberSearchCondition condition) {

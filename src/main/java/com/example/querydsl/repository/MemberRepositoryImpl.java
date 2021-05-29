@@ -5,8 +5,6 @@ import static com.example.querydsl.entity.QTeam.team;
 
 import java.util.List;
 
-import javax.persistence.EntityManager;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -21,10 +19,8 @@ import com.example.querydsl.entity.Member;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPQLQuery;
-import com.querydsl.jpa.JPQLQueryFactory;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-
-import lombok.RequiredArgsConstructor;
 
 /**
  * MemberRepository + Impl (규칙이 존재합니다. `Impl`)
@@ -186,7 +182,7 @@ public class MemberRepositoryImpl extends QuerydslRepositorySupport implements M
                 .limit(pageable.getPageSize()) // 한 페이지에 몇개까지?
                 .fetch();
 
-        JPQLQuery<Member> countQuery = queryFactory
+        JPAQuery<Member> countQuery = queryFactory
                 .select(member)
                 .from(member)
                 .leftJoin(member.team, team)
