@@ -20,8 +20,8 @@ import com.querydsl.jpa.impl.JPAQuery;
 
 @Repository
 public class MemberTestRepository extends Querydsl4RepositorySupport {
-    public MemberTestRepository(final Class<?> domainClass) {
-        super(domainClass);
+    public MemberTestRepository() {
+        super(Member.class);
     }
 
     public List<Member> basicSelect() {

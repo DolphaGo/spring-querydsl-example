@@ -40,6 +40,7 @@ import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 @SpringBootTest
@@ -50,7 +51,7 @@ public class QuerydslBasicTest {
     private EntityManager em;
 
     private JPAQueryFactory queryFactory;
-
+    private Long testId;
     @BeforeEach
     public void setup() {
         queryFactory = new JPAQueryFactory(em);
@@ -68,6 +69,7 @@ public class QuerydslBasicTest {
         em.persist(member2);
         em.persist(member3);
         em.persist(member4);
+        testId = member1.getId();
     }
 
     @DisplayName("distinct test")
@@ -103,6 +105,30 @@ public class QuerydslBasicTest {
                               .getSingleResult();
 
         assertEquals("member1", findMember.getUsername());
+    }
+
+    @DisplayName("영속 컨텍스트를 타고 가는지, 기존 findById는 영속컨텍스트에 있으면 쿼리를 날리지 않았으니까"
+                 + " 결론은 Querydsl은 JPQL을 편하게 작성해주는 것이기 때문에 무조건 쿼리가 나간다.")
+    @Test
+    void test_persist_context_duple_query() {
+        em.flush();
+        System.out.println("=======쿼리 나가니=========");
+        Member member = queryFactory
+                .select(QMember.member)
+                .from(QMember.member)
+                .where(QMember.member.id.eq(testId))
+                .fetchOne();
+        System.out.println("=======종료한다=======");
+        System.out.println(member.getUsername());
+
+        System.out.println("=======한번 더 쿼리 나가니=========");
+        Member member2 = queryFactory
+                .select(QMember.member)
+                .from(QMember.member)
+                .where(QMember.member.id.eq(testId))
+                .fetchOne();
+        System.out.println("=======종료한다=======");
+        System.out.println(member2.getUsername());
     }
 
     /**
@@ -226,7 +252,7 @@ public class QuerydslBasicTest {
 //
 //        assertEquals("member5", member5.getUsername());
 //        assertEquals("member6", member6.getUsername());
-//        Assertions.assertNull(memberNull.getUsername());
+//        Assertions.assertNull(memberNull.getUsernmea());
     }
 
     @DisplayName("페이징")
@@ -1028,7 +1054,5 @@ public class QuerydslBasicTest {
             System.out.println("s = " + s);
         }
     }
-
-
 
 }
